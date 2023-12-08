@@ -7,7 +7,7 @@
 
 #include "operations.h"
 
-#define IMG1 0
+#define ORIGINAL 0
 #define IMG2 1
 #define GRAY_IMG 2
 
@@ -23,68 +23,13 @@ using namespace std;
 */
 
 
-/* =================== *
- *  VARIAVEIS GLOBAIS  *
- * =================== */
-/*  BOOLEANOS */
-bool gray_option_selected = false;
-
-
-/* ====================================== *
- *      IF USER == __APPLE__              *
- * =======================================*/
-#ifdef __APPLE__
-//std::cout << "Este programa está sendo compilado para macOS." << std::endl;
-bool is_apple = true;
-
-namespace fs = std::__fs::filesystem;
-std:: string get_path_macos() {
-    //anotacao:: Concatenar + "TEST " ::  / "test"  :: fs::current_path().parent_path() / "test"
-
-    fs::path p = fs::current_path().parent_path(); // Carrega o caminho atual
-    string path_string = p.string(); // Converte o caminho para uma representação de string
-    return path_string;
-}
-/* IMPORTANTE!! NECESSARIO DEFINIR PASTAS PARA CARREGAR E SALVAR IMAGENS */
-const std::string src_folder = "/Users/lucasmachado/CIC/FPI/test_images/";
-const std::string dst_folder = "/Users/lucasmachado/CIC/FPI/destiny_images/";
-
-//test images
-const string gramado = "Gramado_72k.jpg";
-const string space = "Space_187k.jpg";
-const string underwater = "Underwater_53k.jpg";
-
-#else
-/* ====================================== *
- *  IMPLEMENTAR LOGICA DE BUSCAR ARQUIVOS *
- * =================== ===================*/
-bool is_apple = false;
-#endif
-
-
-
 void reset_images(std::vector<cv::Mat>& vec_img){
-    vec_img[IMG2] = vec_img[IMG1];
-    vec_img[GRAY_IMG] = convert_rgb_to_gray(vec_img[IMG1]);
+    vec_img[IMG2] = vec_img[ORIGINAL];
+    vec_img[GRAY_IMG] = convert_rgb_to_gray(vec_img[ORIGINAL]);
 }
 
-bool save_image(std::string path, std::string img_name, cv::Mat& img){
-    path += "/destiny_images/" + img_name ;
-    //cout << "PATH __---__ :: " << path << endl; 
-    
-    img = cv::imwrite(path,IMREAD_COLOR);
-    if (img.empty()) {
-        std::cerr << "Erro ao carregar a imagem." << std::endl;
-        return false;
-    }
-    return true;
-    
-};
 
-/* ============================================ *
-*         QUANTIZATION                           *
-* ============================================ */ 
-
+bool gray_option_selected = false;
 
 
 
@@ -95,7 +40,7 @@ void menu(cv::Mat& frame, string& selected_img, string& selected_op, std::vector
     /* ============================================ *
      *   ATRIBUINDO VARIAVEIS PARA AS OPERACOES     *
      * ============================================ */ 
-    cv::Mat3b img1 = vec_img[0];
+    cv::Mat3b ORIGINAL = vec_img[0];
     cv::Mat img2 = vec_img[1];
     cv::Mat1b gray_img = vec_img[2];
 
@@ -114,23 +59,22 @@ void menu(cv::Mat& frame, string& selected_img, string& selected_op, std::vector
     /* Botao Atualiza New Image */
     string msg_escolha_imagem = "";
     if (cvui::button(frame, 20, 75, "NewImage <= Original")) {
-        !gray_option_selected ? img2 = img1 : gray_img = convert_rgb_to_gray(vec_img[IMG1]);
+        !gray_option_selected ? img2 = ORIGINAL : gray_img = convert_rgb_to_gray(vec_img[ORIGINAL]);
     }
     /* =================== *
      *   DEMAIS BOTOES     *
      * =================== */ 
     // Escolha a foto a ser carregada
-    y = 135; 
-    incY = 40;
+    y = 135;  incY = 40;
     cvui::text(frame, x-20,y - incY/2, "Escolha a foto a ser carregada ", 0.5 , 0x7a1b0c);
     if (cvui::button(frame, x, y, "Gramado_72k.jpg")) {
-        selected_img = gramado;
+        // selected_img = gramado;
     }
     if (cvui::button(frame, x, y + incY, "Space_187k.jpg")) {
-        selected_img = space;
+        // selected_img = space;
     }
     if (cvui::button(frame, x, y + 2*incY, "Underwater_53k.jpg")) {
-        selected_img = underwater;
+        // selected_img = underwater;
     }
     
     /* ESCOLHA A OPERACAO */
@@ -142,7 +86,7 @@ void menu(cv::Mat& frame, string& selected_img, string& selected_op, std::vector
         !gray_option_selected ? img2 = hflip(img2) : gray_img = hflip(gray_img);
     }
     if (cvui::button(frame, x, y + incY, "Espelhar Verticalmente")) {
-         selected_op = "vflip";
+        selected_op = "vflip";
         !gray_option_selected ? img2 = vflip(img2) : gray_img = vflip(gray_img);
     }
     /* !!! ATUALIZAR !!! */
@@ -156,7 +100,8 @@ void menu(cv::Mat& frame, string& selected_img, string& selected_op, std::vector
      /* QUANTIZATION */
     if (cvui::button(frame, x,  y + 4*incY, "Quantizacao")) {
         gray_option_selected = true;
-        quantization(gray_img, 8);
+        cout << "QUANT:: " << quant << endl;
+        quantization(gray_img, quant);
     }
     cvui::counter(frame, x + 120, y + 4.1*incY, &quant);
 
@@ -165,11 +110,11 @@ void menu(cv::Mat& frame, string& selected_img, string& selected_op, std::vector
     /* BOTAO RESET */
     if (cvui::button(frame, 40,  550, "Reset")) {
         selected_op = "reset";
-        img2 = img1;
+        vec_img[IMG2] = vec_img[ORIGINAL];
+        vec_img[GRAY_IMG] = convert_rgb_to_gray(vec_img[ORIGINAL]);
         gray_option_selected = false;
     }
 
-   
 
     /* REATRIBUINDO OS VALORES AO VETOR DE MATRIZES :: IMAGENS */
     vec_img[IMG2] = img2;
@@ -177,19 +122,24 @@ void menu(cv::Mat& frame, string& selected_img, string& selected_op, std::vector
 }
 
 
-int main(int argc, const char *argv[])
+int main( int argc, char** argv )
 {
-    /* DEFINICAO :: MATRIZES :: IMAGENS */
-    cv::Mat3b img1;
-    cv::Mat img2;
-    cv::Mat1b gray_img;
-    std::vector<cv::Mat> matriz_vetor = {img1, img2, gray_img};
-
-    /* GET PATH */
-    string path_string = is_apple ?  get_path_macos(): "/Users/lucasmachado/CIC/FPI/FPI";
-    if(is_apple){
-        std::cout << "Este programa está sendo compilado para macOS." << std::endl;
+    CommandLineParser parser( argc, argv, "{@input | Gramado_72k.jpg | input image}" );
+    Mat image = imread( samples::findFile( parser.get<String>( "@input" ) ) );
+    if( image.empty() )
+    {
+      cout << "Could not open or find the image!\n" << endl;
+      cout << "Usage: " << argv[0] << " <Input image>" << endl;
+      return -1;
     }
+
+
+
+    /* DEFINICAO :: MATRIZES :: IMAGENS */
+    cv::Mat3b ORIGINAL = image;
+    cv::Mat img2 = Mat::zeros( image.size(), image.type() );;
+    cv::Mat1b cinza;
+    std::vector<cv::Mat> matriz_vetor = {ORIGINAL, img2, cinza};
     
     /* =================== *
      *      MENU FRAME     *
@@ -198,27 +148,15 @@ int main(int argc, const char *argv[])
     // Window inicialization
     cvui::init("Menu");
 
-    string selected_img = argc >= 2 ? argv[0] : gramado ;
+
+
+    /* QUANTIZACAO */
+    int quant = 10;
+    string selected_img = "Gramado.jpg";
     string selected_op = "";
 
-    /* LOAD :: IMG1 :: ORIGINAL IMG*/
-    load_image(path_string,selected_img, matriz_vetor[IMG1]);
-    imshow("Original", matriz_vetor[IMG1]);
-
-    //img2,gray_img == img1
-    matriz_vetor[GRAY_IMG] = convert_rgb_to_gray(matriz_vetor[IMG1]);
-    matriz_vetor[IMG2] = matriz_vetor[IMG1];
-
-    int histogram[256]; 
-
-
-    /* QUANTIZATION */
-
-    // cv::Mat1b imagemQuantizada = convert_rgb_to_gray(imagemColor);
-    // quantization(imagemQuantizada,8);
-
-    
-    int quant = 127; //nro de tons para quantizar o histograma
+    matriz_vetor[GRAY_IMG] = convert_rgb_to_gray(matriz_vetor[ORIGINAL]);
+    matriz_vetor[IMG2] = matriz_vetor[ORIGINAL];
 
     while (true) {
 
@@ -228,12 +166,14 @@ int main(int argc, const char *argv[])
         cvui::text(frame, 20 ,50, "CHECKBOX CINZA: " , 0.5 , 0x8B008b);
         cvui::checkbox(frame, 170, 50, "CINZA?", &gray_option_selected, 0x8B008b);
 
-        /* IMAGEM 1 */
-        load_image(path_string, selected_img, matriz_vetor[IMG1]); // Recarrega imagem :: util ao selecionar outra opcao
-        imshow("Original", matriz_vetor[IMG1]);
+        // /* IMAGEM 1 */
+        //load_image(path_string, selected_img, matriz_vetor[ORIGINAL]); // Recarrega imagem :: util ao selecionar outra opcao
+        // imshow("Original", matriz_vetor[IMG2]);
 
-         /* IMAGEM 2 */
-        imshow("New Image", !gray_option_selected ? matriz_vetor[IMG2] : matriz_vetor[GRAY_IMG]);
+        imshow("ORIGINAL", image);
+        imshow("NEW IMAGE", !gray_option_selected ? matriz_vetor[IMG2] : matriz_vetor[GRAY_IMG]);
+        // imshow("NEW IMAGE",matriz_vetor[GRAY_IMG]);
+
 
         /* REFRESH FRAME MENU */
         cvui::update();

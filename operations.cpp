@@ -84,7 +84,7 @@ cv::Mat vflip(const cv::Mat& src) {
 
     return dst;
 }
-/* HFLIP: Espelhamento horizontal da imagem, transpoe a matriz, e utiliza a funcao vflip, em seguida transpoe de volta *
+/* HFLIP: Espelhamento horizontal da imagem, transpoe a matriz, e utiliza a funcao vflip, em seguida transpoe de volta */
 cv::Mat hflip(const cv::Mat& src) {
     cv::Mat img_aux = src.t();
     cv::Mat dst = vflip(img_aux).t();
