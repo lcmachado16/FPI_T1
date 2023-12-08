@@ -7,7 +7,7 @@
 
 #include "operations.h"
 
-#define ORIGNAL 0
+#define ORIGINAL 0
 #define NEW_IMAGE 1
 #define GRAY_IMG 2
 
@@ -24,14 +24,14 @@ using namespace std;
 
 
 void reset_images(std::vector<cv::Mat>& vec_img){
-    vec_img[NEW_IMAGE] = vec_img[ORIGNAL];
-    vec_img[GRAY_IMG] = convert_rgb_to_gray(vec_img[ORIGNAL]);
+    vec_img[NEW_IMAGE] = vec_img[ORIGINAL];
+    vec_img[GRAY_IMG] = convert_rgb_to_gray(vec_img[ORIGINAL]);
 }
 
 
 bool gray_option_selected = false;
 
-bool save_image(cv::Mat& img){
+bool save_image(cv::Mat& img, string_image_name){
 
      if (img.empty()) {
         std::cerr << "Erro ao carregar a imagem" << std::endl;
@@ -54,7 +54,7 @@ bool save_image(cv::Mat& img){
 
 
 
-void menu(cv::Mat& frame, string& selected_img, string& selected_op, std::vector<cv::Mat>& vec_img, int& quant ){
+void menu(cv::Mat& frame, std::vector<string>& strings , std::vector<cv::Mat>& vec_img, int& quant ){
     
     /* ============================================ *
      *   ATRIBUINDO VARIAVEIS PARA AS OPERACOES     *
@@ -62,6 +62,10 @@ void menu(cv::Mat& frame, string& selected_img, string& selected_op, std::vector
     cv::Mat3b img1 = vec_img[0];
     cv::Mat img2 = vec_img[1];
     cv::Mat1b gray_img = vec_img[2];
+
+    string selected_img = strings[0];
+    string selected_op = strings[1];
+    string img_salva = strings[2];
 
     /* MENU */
 
@@ -74,11 +78,12 @@ void menu(cv::Mat& frame, string& selected_img, string& selected_op, std::vector
 
     cvui::text(frame, 20 ,30, "Efeito selecionado: " , 0.5 , 0x120a8f);
     cvui::text(frame, 200 ,30, selected_op , 0.5 , 0x7a1b0c);
+    cvui::text(frame, 100 , 500, img_salva , 0.5 , 0x120a8f);
 
     /* Botao Atualiza New Image */
     string msg_escolha_imagem = "";
     if (cvui::button(frame, 20, 75, "NewImage <= Original")) {
-        !gray_option_selected ? img2 = img1 : gray_img = convert_rgb_to_gray(vec_img[NEW_IMAGE]);
+        gray_option_selected ?  vec_img[GRAY_IMG] = convert_rgb_to_gray(vec_img[ORIGINAL]) : img2 = img1;
     }
     /* =================== *
      *   DEMAIS BOTOES     *
@@ -97,7 +102,8 @@ void menu(cv::Mat& frame, string& selected_img, string& selected_op, std::vector
     // }
     
     /* ESCOLHA A OPERACAO */
-    y = y + 160;
+    // y = y + 160;
+    y = 140;
     cvui::text(frame, x-20,  y - 30, "Escolha a operacao ", 0.5 , 0x7a1b0c);
 
     /* HFLIP */
@@ -118,7 +124,12 @@ void menu(cv::Mat& frame, string& selected_img, string& selected_op, std::vector
     
     /* BOTAO SALVAR IMAGEM */
     if (cvui::button(frame, x,  y + 3*incY, "Salvar Imagem")) {
-        bool salvou = gray_option_selected ? save_image( vec_img[GRAY_IMG] )  : save_image(vec_img[NEW_IMAGE]) ;
+        bool salvou = gray_option_selected ? save_image(vec_img[GRAY_IMG]) : save_image(vec_img[NEW_IMAGE]) ;
+
+        if (salvou){
+             img_salva = "Imagem Salva com Sucesso!";
+        }
+         
     }
 
 
@@ -135,16 +146,19 @@ void menu(cv::Mat& frame, string& selected_img, string& selected_op, std::vector
     /* BOTAO RESET */
     if (cvui::button(frame, 40,  550, "Reset")) {
         selected_op = "reset";
-        vec_img[NEW_IMAGE] = vec_img[ORIGNAL];
-        vec_img[GRAY_IMG] = convert_rgb_to_gray(vec_img[ORIGNAL]);
+        vec_img[NEW_IMAGE] = vec_img[ORIGINAL];
+        vec_img[GRAY_IMG] = convert_rgb_to_gray(vec_img[ORIGINAL]);
         gray_option_selected = false;
     }
-
+    // Truncar o valor de Quant
+    quant = std::max(0, std::min(255, quant));  
 
     /* REATRIBUINDO OS VALORES AO VETOR DE MATRIZES :: IMAGENS */
     vec_img[NEW_IMAGE] = img2;
     //vec_img[GRAY_IMG] = gray_img;
-    quant = std::max(0, std::min(255, quant)); // Truncar o valor de Quant 
+    strings[0] = selected_img; 
+    strings[1] =selected_op;
+    strings[2] = img_salva;
 }
 
 
@@ -184,16 +198,18 @@ int main( int argc, char** argv )
     /* QUANTIZACAO */
     int quant = 50;
 
-    string selected_img = argc >= 2 ? argv[1] : "Gramado.jpg";
+    string selected_img = argc >= 2? parser.get<String>( "@input" )  : "Gramado.jpg";
     string selected_op = "";
+    string save_sucess = "" ;
+    std::vector<std::string> strings  = {selected_img, selected_op, save_sucess};
 
-    matriz_vetor[GRAY_IMG] = convert_rgb_to_gray(matriz_vetor[ORIGNAL]);
-    matriz_vetor[NEW_IMAGE] = matriz_vetor[ORIGNAL];
+    matriz_vetor[GRAY_IMG] = convert_rgb_to_gray(matriz_vetor[ORIGINAL]);
+    matriz_vetor[NEW_IMAGE] = matriz_vetor[ORIGINAL];
 
     while (true) {
 
         /* MENU */
-        menu(frame,selected_img,selected_op, matriz_vetor, quant);
+        menu(frame,strings, matriz_vetor, quant);
         /* CINZA */
         cvui::text(frame, 20 ,50, "CHECKBOX CINZA: " , 0.5 , 0x8B008b);
         cvui::checkbox(frame, 170, 50, "CINZA?", &gray_option_selected, 0x8B008b);
@@ -203,8 +219,7 @@ int main( int argc, char** argv )
         // imshow("Original", matriz_vetor[IMG2]);
 
         imshow("ORIGINAL", image);
-        imshow("NEW IMAGE", !gray_option_selected ? matriz_vetor[NEW_IMAGE] : matriz_vetor[GRAY_IMG]);
-        // imshow("NEW IMAGE",matriz_vetor[GRAY_IMG]);
+        imshow("NEW IMAGE", gray_option_selected ? matriz_vetor[GRAY_IMG] : matriz_vetor[NEW_IMAGE]);
 
         /* REFRESH FRAME MENU */
         cvui::update();
