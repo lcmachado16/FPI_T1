@@ -15,6 +15,29 @@ bool load_image(std::string path, std::string img_name, cv::Mat& img){
     
 };
 
+bool save_image(cv::Mat& img){
+    std::string path = "dst_images/result.jpg";
+     if (img.empty()) {
+        std::cerr << "Erro ao carregar a imagem" << std::endl;
+        return false;
+    }
+    vector<int> compression_params;
+    compression_params.push_back(IMWRITE_JPEG_QUALITY);
+    compression_params.push_back(97); //qualidade 97, padrao eh 95
+    try {
+        imwrite(path, img, compression_params);
+        printf("IMAGEM SALVA COM SUCESSO");
+    } catch (runtime_error& ex) {
+        fprintf(stderr, "Exception converting image to JPEG format: %s\n", ex.what());
+        return false;
+    }
+    return true;
+}
+
+
+
+
+
 
 /*
  *  convert_rgb_to_gray: Mat3b -> Mat1b

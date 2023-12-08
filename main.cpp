@@ -10,6 +10,7 @@
 #define ORIGINAL 0
 #define NEW_IMAGE 1
 #define GRAY_IMG 2
+#define ORIGINAL_GRAY 3
 
 using namespace cv;
 using namespace std;
@@ -22,6 +23,48 @@ using namespace std;
 
 */
 
+bool closeButtonClicked = false; // 
+
+void onMouse(int event, int x, int y, int flags, void* userdata) {
+    if (event == cv::EVENT_LBUTTONDOWN) {
+        // Verificar se o clique está dentro da área do botão de fechar
+        if (x > 100 && x < 200 && y > 50 && y < 100) {
+            closeButtonClicked = true;
+        }
+    }
+}
+
+void mostrarMensagem(const std::string& mensagem) {
+    // Criar uma janela para exibir a mensagem
+    cv::Mat messageWindow = cv::Mat::zeros(150, 300, CV_8UC3);
+    messageWindow= cv::Scalar(100,150,150);
+    //cv::putText(messageWindow, mensagem, cv::Point(10, 50), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(255, 255, 255), 2);
+    cvui::text(messageWindow, 30 ,15, mensagem , 0.7 , 0x120a8f);
+    // Adicionar um botão de fechar usando a cvui
+    if (cvui::button(messageWindow, 100, 50, 100, 50, "Fechar")) {
+        closeButtonClicked = true;
+    }
+
+    // Exibir a mensagem em uma nova janela
+    cvui::imshow("Mensagem", messageWindow);
+
+    // Configurar o callback do mouse para detectar cliques no botão de fechar
+    cv::setMouseCallback("Mensagem", onMouse, nullptr);
+
+    // Loop principal para esperar até que o botão de fechar seja clicado
+    while (!closeButtonClicked) {
+        cvui::update();  // Atualizar a interface cvui
+        int key = cv::waitKey(10);
+        if (key == 27) {  // Espera até que a tecla Esc seja pressionada para sair
+            break;
+        }
+    }
+    // Resetar a variável de controle
+    closeButtonClicked = false;
+    // Destruir a janela
+    cv::destroyWindow("Mensagem");
+}
+
 
 void reset_images(std::vector<cv::Mat>& vec_img){
     vec_img[NEW_IMAGE] = vec_img[ORIGINAL];
@@ -30,29 +73,7 @@ void reset_images(std::vector<cv::Mat>& vec_img){
 
 
 bool gray_option_selected = false;
-
-bool save_image(cv::Mat& img, string_image_name){
-
-     if (img.empty()) {
-        std::cerr << "Erro ao carregar a imagem" << std::endl;
-        return false;
-    }
-    vector<int> compression_params;
-    compression_params.push_back(IMWRITE_JPEG_QUALITY);
-    compression_params.push_back(97); //qualidade 97, padrao eh 95
-    try {
-        imwrite("dst_images/result.jpg", img, compression_params);
-        printf("IMAGEM SALVA COM SUCESSO");
-    } catch (runtime_error& ex) {
-        fprintf(stderr, "Exception converting image to PNG format: %s\n", ex.what());
-        return false;
-    }
-    return true;
-}
-
-
-
-
+bool show_original = true;
 
 void menu(cv::Mat& frame, std::vector<string>& strings , std::vector<cv::Mat>& vec_img, int& quant ){
     
@@ -73,12 +94,12 @@ void menu(cv::Mat& frame, std::vector<string>& strings , std::vector<cv::Mat>& v
     int x = 55;  int y = 15; int incY; //incremento utilizado para avancar o Y 
    
     /* TEXTOS Variaveis */
-    cvui::text(frame, 20 ,15, "Imagem selecionada: " , 0.5 , 0x120a8f);
-    cvui::text(frame, 200 ,15,  selected_img , 0.5 , 0x7a1b0c);
+    // cvui::text(frame, 20 ,15, "Imagem selecionada: " , 0.5 , 0x120a8f);
+    // cvui::text(frame, 200 ,15,  selected_img , 0.5 , 0x7a1b0c);
 
-    cvui::text(frame, 20 ,30, "Efeito selecionado: " , 0.5 , 0x120a8f);
-    cvui::text(frame, 200 ,30, selected_op , 0.5 , 0x7a1b0c);
-    cvui::text(frame, 100 , 500, img_salva , 0.5 , 0x120a8f);
+    cvui::text(frame, 20 ,50, "Efeito selecionado: " , 0.5 , 0x120a8f);
+    cvui::text(frame, 200 ,50, selected_op , 0.5 , 0x7a1b0c);
+    cvui::text(frame, x , 500, img_salva , 0.5, 0x120a8f);
 
     /* Botao Atualiza New Image */
     string msg_escolha_imagem = "";
@@ -88,28 +109,14 @@ void menu(cv::Mat& frame, std::vector<string>& strings , std::vector<cv::Mat>& v
     /* =================== *
      *   DEMAIS BOTOES     *
      * =================== */ 
-    // Escolha a foto a ser carregada
-    y = 135;  incY = 40;
-    // cvui::text(frame, x-20,y - incY/2, "Escolha a foto a ser carregada ", 0.5 , 0x7a1b0c);
-    // if (cvui::button(frame, x, y, "Gramado_72k.jpg")) {
-    //     // selected_img = gramado;
-    // }
-    // if (cvui::button(frame, x, y + incY, "Space_187k.jpg")) {
-    //     // selected_img = space;
-    // }
-    // if (cvui::button(frame, x, y + 2*incY, "Underwater_53k.jpg")) {
-    //     // selected_img = underwater;
-    // }
-    
-    /* ESCOLHA A OPERACAO */
-    // y = y + 160;
-    y = 140;
+    y = 140;  incY = 40;
+ 
     cvui::text(frame, x-20,  y - 30, "Escolha a operacao ", 0.5 , 0x7a1b0c);
 
     /* HFLIP */
     if (cvui::button(frame, x, y, "Espelhar Horizontalmente")) {
         selected_op = "horizontal_flip";
-        gray_option_selected ? img2 = vec_img[GRAY_IMG] = hflip(vec_img[GRAY_IMG]) : img2 = hflip(img2) ;
+        gray_option_selected ? vec_img[GRAY_IMG] = hflip(vec_img[GRAY_IMG]) : img2 = hflip(img2) ;
     }
     /* VFLIP */
     if (cvui::button(frame, x, y + incY, "Espelhar Verticalmente")) {
@@ -125,11 +132,8 @@ void menu(cv::Mat& frame, std::vector<string>& strings , std::vector<cv::Mat>& v
     /* BOTAO SALVAR IMAGEM */
     if (cvui::button(frame, x,  y + 3*incY, "Salvar Imagem")) {
         bool salvou = gray_option_selected ? save_image(vec_img[GRAY_IMG]) : save_image(vec_img[NEW_IMAGE]) ;
-
-        if (salvou){
-             img_salva = "Imagem Salva com Sucesso!";
-        }
-         
+        img_salva = salvou ? strings[0] + strings[1] + strings[2]  : "" ; // reset de string
+        mostrarMensagem("Salvo com sucesso!");
     }
 
 
@@ -137,7 +141,9 @@ void menu(cv::Mat& frame, std::vector<string>& strings , std::vector<cv::Mat>& v
     if (cvui::button(frame, x,  y + 4*incY, "Quantizacao")) {
         selected_op = "Quantization" ;
         gray_option_selected = true;
+        gray_img = convert_rgb_to_gray(vec_img[ORIGINAL]);
         quantization(gray_img, quant);
+        vec_img[GRAY_IMG] = gray_img;
     }
     cvui::counter(frame, x + 120, y + 4.1*incY, &quant);
     cvui::trackbar(frame, x , y + 5*incY , 220, &quant,  0 , 255);
@@ -179,12 +185,12 @@ int main( int argc, char** argv )
 
 
     /* DEFINICAO :: MATRIZES :: IMAGENS */
-    cv::Mat3b img1 = image;
-    cv::Mat img2 = Mat::zeros( image.size(), image.type() );
-    cv::Mat1b cinza = cv::Mat::zeros(image.size(), CV_8U);
+    cv::Mat new_image = Mat::zeros( image.size(), image.type() );
+    cv::Mat1b new_image_gray = cv::Mat::zeros(image.size(), CV_8U);
+    cv::Mat3b original_gray =  cv::Mat::zeros(image.size(), CV_8U);
 
 
-    std::vector<cv::Mat> matriz_vetor = {img1, img2, cinza};
+    std::vector<cv::Mat> matriz_vetor = {image, new_image, new_image_gray, original_gray};
     
     /* =================== *
      *      MENU FRAME     *
@@ -203,23 +209,30 @@ int main( int argc, char** argv )
     string save_sucess = "" ;
     std::vector<std::string> strings  = {selected_img, selected_op, save_sucess};
 
+    matriz_vetor[ORIGINAL_GRAY] = convert_rgb_to_gray(matriz_vetor[ORIGINAL]);
     matriz_vetor[GRAY_IMG] = convert_rgb_to_gray(matriz_vetor[ORIGINAL]);
     matriz_vetor[NEW_IMAGE] = matriz_vetor[ORIGINAL];
+
+    imshow("ORIGINAL", image);
+    namedWindow("NEW_IMAGE");
+
+  
+    cv::moveWindow("ORIGINAL", 350, 100);
+    cv::Rect tamanhoJanela = cv::getWindowImageRect("ORIGINAL");
+    cv::moveWindow("NEW_IMAGE", 350 + tamanhoJanela.width, 100);
 
     while (true) {
 
         /* MENU */
         menu(frame,strings, matriz_vetor, quant);
         /* CINZA */
-        cvui::text(frame, 20 ,50, "CHECKBOX CINZA: " , 0.5 , 0x8B008b);
-        cvui::checkbox(frame, 170, 50, "CINZA?", &gray_option_selected, 0x8B008b);
+        cvui::text(frame, 20 ,30, "[GrayImage?]: " , 0.5 , 0x8B008b);
+        cvui::checkbox(frame, 170, 30, "GrayImage?", &gray_option_selected, 0x8B008b);
+        cvui::text(frame, 20 ,10, "[Color_Original?]: " , 0.5 , 0x8B008b);
+        cvui::checkbox(frame, 170, 10, "ShowOriginal?", &show_original, 0x8B008b);
 
-        // /* IMAGEM 1 */
-        //load_image(path_string, selected_img, matriz_vetor[IMG1]); // Recarrega imagem :: util ao selecionar outra opcao
-        // imshow("Original", matriz_vetor[IMG2]);
-
-        imshow("ORIGINAL", image);
-        imshow("NEW IMAGE", gray_option_selected ? matriz_vetor[GRAY_IMG] : matriz_vetor[NEW_IMAGE]);
+        imshow("ORIGINAL", show_original ? matriz_vetor[ORIGINAL] : matriz_vetor[ORIGINAL_GRAY]);
+        imshow("NEW_IMAGE", gray_option_selected ? matriz_vetor[GRAY_IMG] : matriz_vetor[NEW_IMAGE]);
 
         /* REFRESH FRAME MENU */
         cvui::update();
@@ -235,14 +248,3 @@ int main( int argc, char** argv )
     return 0;
 }
 
-
-/* TO DOS
-    * Configurar selecao de arquivo pra MacOS e fora de MacOS :: Load images 
-    * Quantizar imagem em tons de cinza
-    * A funcao load_image foi concebida com base nos diretorios locais do MacOS => é preciso alterar isto
-    * 
-    * Boas Praticas :: 
-    *  passar variaveis globais por referencia 
-    *  criar um arquivo separado para funcoes auxiliares 
-    * Passar variaveis como cor para globais (nao sei se é possivel pq nao sao strings) :: 0x120a8f 
-*/

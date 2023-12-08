@@ -7,6 +7,8 @@
 using namespace cv;
 using namespace std;
 
+
+bool save_image(cv::Mat& img);
 bool load_image(std::string path, std::string img_name, cv::Mat& img);
 
 
