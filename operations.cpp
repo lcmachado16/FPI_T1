@@ -97,7 +97,7 @@ void quantization(cv::Mat1b& imagem, int niveis_quant) {
     int max_quant_val = 255 / div_interval;  // max_value after quantization
     for (int y = 0; y < imagem.rows; y++) {
         for (int x = 0; x < imagem.cols; x++) {
-            imagem.at<uchar>(x, y) = ((imagem.at<uchar>(x, y) / div_interval) * 255) / max_quant_val;
+            imagem.at<uchar>(y, x) = ((imagem.at<uchar>(y, x) / div_interval) * 255) / max_quant_val;
         }
     }
 }
